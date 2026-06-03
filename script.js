@@ -1,19 +1,49 @@
 // ============================================================
-// CONFIG — edite aqui para mudar perguntas, textos ou webhook
+// Vesti — Formulário conversacional
+// Tudo que se edita com frequência está no CONFIG abaixo.
 // ============================================================
-const CONFIG = {
-  // Teste: 'https://marketing.oraculo.moda/webhook-test/a5eca436-375e-4d22-9bac-7ade2048944a'
-  webhookUrl: 'https://marketing.oraculo.moda/webhook/a5eca436-375e-4d22-9bac-7ade2048944a',
 
-  // Foto da "atendente" — troque por uma foto da equipe Vesti depois
+const CONFIG = {
+  // === Webhook n8n =========================================
+  // Para alternar entre produção e teste, mude `webhook.active`.
+  // A URL de teste só recebe quando o workflow estiver em
+  // "Listen for test event" no editor da n8n.
+  webhook: {
+    production: 'https://marketing.oraculo.moda/webhook/a5eca436-375e-4d22-9bac-7ade2048944a',
+    test:       'https://marketing.oraculo.moda/webhook-test/a5eca436-375e-4d22-9bac-7ade2048944a',
+    active: 'production' // 'production' | 'test'
+  },
+
+  // === Foto da "atendente" ================================
   avatarUrl: 'https://randomuser.me/api/portraits/women/79.jpg',
 
-  // Mensagens iniciais do "bot" antes da primeira pergunta
+  // === Tempos de animação (ms) ============================
+  timing: {
+    intro:      600, // delay entre cada mensagem de boas-vindas
+    question:   750, // delay antes de cada pergunta do bot
+    finalTitle: 600, // delay antes do título da tela final
+    focus:      100  // delay para focar o input após troca de etapa
+  },
+
+  // === Mensagens iniciais (antes da 1ª pergunta) ==========
   intro: [
     'A Vesti impulsiona as vendas Online da sua confecção, são quase mil confecções utilizando o ecossistema Vesti.',
     'Quer falar com um especialista? Em 1 minuto eu te conecto.'
   ],
 
+  // === Etapas / perguntas =================================
+  // Cada etapa aceita:
+  //   key:         nome do campo no payload
+  //   botMessage:  string OU função(data) => string
+  //   label:       texto acima do input
+  //   placeholder: texto interno do input
+  //   type:        'text' | 'email' | 'tel' | 'choice'
+  //   prefix:      string opcional exibida antes do input (ex.: 'BR +55')
+  //   mask:        'phoneBR' para máscara de telefone brasileiro
+  //   options:     [{ value, label }] (obrigatório quando type === 'choice')
+  //   validate:    (raw) => string|null  (mensagem de erro ou null)
+  //   format:      (raw) => valor final salvo no payload
+  //   condition:   (data) => boolean — se false, etapa é pulada
   steps: [
     {
       key: 'nome',
@@ -63,8 +93,8 @@ const CONFIG = {
       label: 'PERFIL',
       type: 'choice',
       options: [
-        { value: 'fabricante', label: 'Fabricante' },
-        { value: 'multimarca', label: 'Multimarca' },
+        { value: 'fabricante',    label: 'Fabricante' },
+        { value: 'multimarca',    label: 'Multimarca' },
         { value: 'cliente_vesti', label: 'Já sou cliente da Vesti' }
       ]
     },
@@ -106,21 +136,22 @@ const CONFIG = {
       type: 'choice',
       condition: (data) => data.perfil === 'fabricante',
       options: [
-        { value: 'btn_starter', label: 'Até R$ 200k' },
-        { value: 'btn_pro', label: 'R$ 200k - R$ 1M' },
+        { value: 'btn_starter',    label: 'Até R$ 200k' },
+        { value: 'btn_pro',        label: 'R$ 200k - R$ 1M' },
         { value: 'btn_enterprise', label: 'Acima de R$ 1M' }
       ]
     }
   ],
 
+  // === Tela final =========================================
   finalMessage: {
     title: 'Recebemos seu contato!',
-    body: 'Um especialista da Vesti vai falar com você em instantes pelo WhatsApp.'
+    body:  'Um especialista da Vesti vai falar com você em instantes pelo WhatsApp.'
   }
 };
 
 // ============================================================
-// Estado
+// Estado interno
 // ============================================================
 const state = {
   stepIndex: 0,
@@ -128,55 +159,69 @@ const state = {
 };
 
 // ============================================================
-// Helpers
+// Helpers gerais
 // ============================================================
+function getActiveWebhookUrl() {
+  return CONFIG.webhook[CONFIG.webhook.active] || CONFIG.webhook.production;
+}
+
 function firstName(full) {
   return (full || '').trim().split(/\s+/)[0] || '';
 }
 
-function $(sel) { return document.querySelector(sel); }
+function $(sel) {
+  return document.querySelector(sel);
+}
 
 function scrollChatToBottom() {
   const chat = $('#chat');
   chat.scrollTop = chat.scrollHeight;
 }
 
+// Lê UTMs e click IDs (gclid/fbclid) da URL atual.
 function getUtmsAndClickIds() {
   const params = new URLSearchParams(window.location.search);
-  const keys = ['utm_source','utm_medium','utm_campaign','utm_content','utm_term','gclid','fbclid'];
+  const keys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'fbclid'];
   const out = {};
-  keys.forEach(k => { const v = params.get(k); if (v) out[k] = v; });
+  keys.forEach(k => {
+    const v = params.get(k);
+    if (v) out[k] = v;
+  });
   return out;
 }
 
+// Máscara de telefone brasileiro: (XX) XXXXX-XXXX
 function applyPhoneMaskBR(value) {
   const d = value.replace(/\D/g, '').slice(0, 11);
-  if (d.length === 0) return '';
-  if (d.length <= 2) return `(${d}`;
-  if (d.length <= 6) return `(${d.slice(0,2)}) ${d.slice(2)}`;
-  if (d.length <= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
-  return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7,11)}`;
+  if (d.length === 0)  return '';
+  if (d.length <= 2)   return `(${d}`;
+  if (d.length <= 6)   return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10)  return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7, 11)}`;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
 }
 
 // ============================================================
-// UI: balões e indicador "digitando"
+// UI: balões e indicador "digitando..."
 // ============================================================
 function appendBubble(side, text) {
   const row = document.createElement('div');
   row.className = `row ${side}`;
   if (side === 'bot') {
-    row.innerHTML = `<div class="avatar" aria-hidden="true"><img src="${CONFIG.avatarUrl}" alt=""/></div><div class="bubble">${escapeHtml(text)}</div>`;
+    row.innerHTML = `
+      <div class="avatar" aria-hidden="true"><img src="${CONFIG.avatarUrl}" alt=""/></div>
+      <div class="bubble">${escapeHtml(text)}</div>
+    `;
   } else {
     row.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>`;
   }
   $('#chat').appendChild(row);
   scrollChatToBottom();
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[c]));
 }
 
 function showTyping() {
@@ -196,7 +241,7 @@ function hideTyping() {
   if (t) t.remove();
 }
 
-async function botSay(text, delay = 700) {
+async function botSay(text, delay = CONFIG.timing.question) {
   showTyping();
   await new Promise(r => setTimeout(r, delay));
   hideTyping();
@@ -204,7 +249,7 @@ async function botSay(text, delay = 700) {
 }
 
 // ============================================================
-// Progresso (dinâmico — considera steps condicionais)
+// Progresso dinâmico (considera etapas condicionais)
 // ============================================================
 function getVisibleSteps() {
   return CONFIG.steps.filter(s => !s.condition || s.condition(state.data));
@@ -239,19 +284,20 @@ function updateProgress() {
 }
 
 // ============================================================
-// Renderiza o input para a step atual
+// Renderização do input para a etapa atual
 // ============================================================
 function renderInputForCurrentStep() {
-  const step = CONFIG.steps[state.stepIndex];
-  const input = $('#input');
-  const label = $('#fieldLabel');
-  const prefix = $('#prefix');
+  const step      = CONFIG.steps[state.stepIndex];
+  const input     = $('#input');
+  const label     = $('#fieldLabel');
+  const prefix    = $('#prefix');
   const inputWrap = $('#inputWrap');
-  const choices = $('#choices');
+  const choices   = $('#choices');
 
   label.textContent = step.label;
   $('#error').textContent = '';
 
+  // Escolha múltipla: esconde input, mostra botões
   if (step.type === 'choice') {
     inputWrap.hidden = true;
     choices.hidden = false;
@@ -267,12 +313,15 @@ function renderInputForCurrentStep() {
     return;
   }
 
+  // Texto/email/telefone
   inputWrap.hidden = false;
   choices.hidden = true;
   input.value = '';
   input.type = step.type || 'text';
   input.placeholder = step.placeholder || '';
-  input.inputMode = step.type === 'tel' ? 'numeric' : (step.type === 'email' ? 'email' : 'text');
+  input.inputMode = step.type === 'tel' ? 'numeric'
+                   : step.type === 'email' ? 'email'
+                   : 'text';
 
   if (step.prefix) {
     prefix.textContent = step.prefix;
@@ -282,7 +331,7 @@ function renderInputForCurrentStep() {
     prefix.textContent = '';
   }
 
-  setTimeout(() => input.focus(), 100);
+  setTimeout(() => input.focus(), CONFIG.timing.focus);
 }
 
 function onChoiceSelect(opt) {
@@ -293,11 +342,12 @@ function onChoiceSelect(opt) {
 }
 
 // ============================================================
-// Avança para próximo passo
+// Avanço de etapas (com salto condicional)
 // ============================================================
 async function nextStep() {
   state.stepIndex += 1;
-  // Pula steps cuja condição não for atendida
+
+  // Pula etapas cuja condição não for atendida
   while (state.stepIndex < CONFIG.steps.length) {
     const s = CONFIG.steps[state.stepIndex];
     if (s.condition && !s.condition(state.data)) {
@@ -306,44 +356,50 @@ async function nextStep() {
       break;
     }
   }
+
   updateProgress();
+
   if (state.stepIndex >= CONFIG.steps.length) {
     await finish();
     return;
   }
+
   const step = CONFIG.steps[state.stepIndex];
-  const msg = typeof step.botMessage === 'function' ? step.botMessage(state.data) : step.botMessage;
-  await botSay(msg, 750);
+  const msg  = typeof step.botMessage === 'function'
+    ? step.botMessage(state.data)
+    : step.botMessage;
+  await botSay(msg, CONFIG.timing.question);
   renderInputForCurrentStep();
 }
 
 // ============================================================
-// Submissão final
+// Submissão final ao webhook
 // ============================================================
 async function finish() {
   $('#composer').remove();
-  await botSay(CONFIG.finalMessage.title, 600);
+  await botSay(CONFIG.finalMessage.title, CONFIG.timing.finalTitle);
 
   const payload = {
     ...state.data,
     ...getUtmsAndClickIds(),
     submitted_at: new Date().toISOString(),
-    page_url: window.location.href,
-    user_agent: navigator.userAgent,
-    referrer: document.referrer || null
+    page_url:     window.location.href,
+    user_agent:   navigator.userAgent,
+    referrer:     document.referrer || null
   };
 
   try {
-    await fetch(CONFIG.webhookUrl, {
-      method: 'POST',
+    await fetch(getActiveWebhookUrl(), {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body:    JSON.stringify(payload)
     });
   } catch (err) {
-    console.error('Webhook error:', err);
+    console.error('[Vesti Form] Erro ao enviar para o webhook:', err);
   }
 
-  const main = $('.app');
+  // Renderiza o cartão de "obrigado"
+  const main = $('.vf-app');
   const done = document.createElement('div');
   done.className = 'done-state';
   done.innerHTML = `
@@ -359,17 +415,19 @@ async function finish() {
 }
 
 // ============================================================
-// Handlers
+// Handlers de input
 // ============================================================
 function onSubmit(e) {
   e.preventDefault();
   const step = CONFIG.steps[state.stepIndex];
-  const raw = $('#input').value;
+  const raw  = $('#input').value;
+
   const err = step.validate ? step.validate(raw) : null;
   if (err) {
     $('#error').textContent = err;
     return;
   }
+
   const value = step.format ? step.format(raw) : raw.trim();
   state.data[step.key] = value;
 
@@ -396,17 +454,19 @@ async function init() {
 
   // Mensagens introdutórias
   for (const msg of CONFIG.intro) {
-    await botSay(msg, 600);
+    await botSay(msg, CONFIG.timing.intro);
   }
 
   // Primeira pergunta
-  const first = CONFIG.steps[0];
-  const firstMsg = typeof first.botMessage === 'function' ? first.botMessage(state.data) : first.botMessage;
-  await botSay(firstMsg, 700);
+  const first    = CONFIG.steps[0];
+  const firstMsg = typeof first.botMessage === 'function'
+    ? first.botMessage(state.data)
+    : first.botMessage;
+  await botSay(firstMsg, CONFIG.timing.question);
   renderInputForCurrentStep();
 }
 
 $('#composer').addEventListener('submit', onSubmit);
-$('#input').addEventListener('input', onInput);
+$('#input').addEventListener('input',   onInput);
 
 init();

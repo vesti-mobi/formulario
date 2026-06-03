@@ -5,18 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Impulsione a venda online da sua confecção com Vesti — e-commerce, IA e CRM para Atacado de Moda." />
   <title>Vesti — Fale com um especialista</title>
+
+  <!-- Fonte -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Estilos do formulário (todos escopados em .vf-app) -->
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main class="app">
+  <!-- Container raiz: todo CSS está escopado a esta classe -->
+  <main class="vf-app" aria-label="Formulário de contato Vesti">
+
+    <!-- Topbar: marca + barra de progresso -->
     <header class="topbar">
-      <div class="brand" aria-label="Vesti">
+      <div class="brand">
         <span class="brand-name">Vesti</span>
       </div>
-      <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="4" aria-valuenow="0">
+      <div
+        class="progress"
+        role="progressbar"
+        aria-label="Progresso do formulário"
+        aria-valuemin="0"
+        aria-valuemax="4"
+        aria-valuenow="0"
+      >
+        <!-- Os dots são reconstruídos dinamicamente em updateProgress() -->
         <span class="dot active" data-step="1"></span>
         <span class="bar"></span>
         <span class="dot" data-step="2"></span>
@@ -27,10 +42,19 @@
       </div>
     </header>
 
-    <section class="chat" id="chat" aria-live="polite"></section>
+    <!-- Área do chat: balões de mensagens (bot e usuário) -->
+    <section
+      class="chat"
+      id="chat"
+      role="log"
+      aria-live="polite"
+      aria-label="Conversa com o atendente"
+    ></section>
 
+    <!-- Composer: entrada de texto OU botões de escolha + erro + termos -->
     <form class="composer" id="composer" autocomplete="off" novalidate>
       <label class="field-label" id="fieldLabel" for="input">NOME COMPLETO</label>
+
       <div class="input-wrap" id="inputWrap">
         <span class="prefix" id="prefix" hidden></span>
         <input
@@ -41,14 +65,23 @@
           autocomplete="off"
           required
         />
-        <button class="send" id="send" type="submit" aria-label="Enviar">
+        <button class="send" id="send" type="submit" aria-label="Enviar resposta">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
       </div>
-      <div class="choices" id="choices" hidden></div>
-      <p class="error" id="error" role="alert"></p>
+
+      <div
+        class="choices"
+        id="choices"
+        role="group"
+        aria-label="Opções de resposta"
+        hidden
+      ></div>
+
+      <p class="error" id="error" role="alert" aria-live="assertive"></p>
+
       <p class="terms">
         Ao continuar, você concorda com a
         <a href="#" target="_blank" rel="noopener">Política de Privacidade</a>
