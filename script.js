@@ -27,8 +27,7 @@ const CONFIG = {
 
   // === Mensagens iniciais (antes da 1ª pergunta) ==========
   intro: [
-    'A Vesti impulsiona as vendas Online da sua confecção, são quase mil confecções utilizando o ecossistema Vesti.',
-    'Quer falar com um especialista? Em 1 minuto eu te conecto.'
+    'A Vesti impulsiona as vendas Online da sua confecção, são quase mil confecções utilizando o ecossistema Vesti.'
   ],
 
   // === Etapas / perguntas =================================
