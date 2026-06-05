@@ -82,6 +82,16 @@ const CONFIG = {
       ]
     },
     {
+      key: 'marca',
+      botMessage: 'Show! E qual o nome da sua marca?',
+      label: 'NOME DA MARCA',
+      placeholder: 'Digite o nome da sua marca...',
+      type: 'text',
+      condition: (data) => data.perfil === 'fabricante' || data.perfil === 'cliente_vesti',
+      validate: (v) => v.trim().length < 2 ? 'Informe o nome da marca.' : null,
+      format: (v) => v.trim()
+    },
+    {
       key: 'cliente_busca',
       botMessage: 'O que está buscando?',
       label: 'BUSCA',
@@ -91,16 +101,6 @@ const CONFIG = {
         { value: 'btn_suporte', label: 'Suporte' },
         { value: 'btn_cs',      label: 'Conhecer outro produto' }
       ]
-    },
-    {
-      key: 'marca',
-      botMessage: 'Show! E qual o nome da sua marca?',
-      label: 'NOME DA MARCA',
-      placeholder: 'Digite o nome da sua marca...',
-      type: 'text',
-      condition: (data) => data.perfil === 'fabricante',
-      validate: (v) => v.trim().length < 2 ? 'Informe o nome da marca.' : null,
-      format: (v) => v.trim()
     },
     {
       key: 'usa_erp',
@@ -145,7 +145,15 @@ const CONFIG = {
 
   // === Mensagem específica para perfil multimarca =========
   multimarcaMessage:
-    'A Vesti é focada no atacado de moda, conectando fabricantes e revendedores diretamente, por isso não atendemos o modelo multimarca.\n\nMas se quiser conhecer os fornecedores que usam a Vesti, vale baixar o Vestishop, nosso app com o catálogo completo das confecções parceiras: https://vestishop.vesti.mobi/app'
+    'A Vesti é focada no atacado de moda, conectando fabricantes e revendedores diretamente, por isso não atendemos o modelo multimarca.\n\nMas se quiser conhecer os fornecedores que usam a Vesti, vale baixar o Vestishop, nosso app com o catálogo completo das confecções parceiras: https://vestishop.vesti.mobi/app',
+
+  // === Mensagem específica para cliente Vesti buscando outro produto ===
+  clienteCSMessage: (data) =>
+    `Obrigada, ${firstName(data.nome)}! A consultora responsável pela sua marca entrará em contato em breve.`,
+
+  // === Mensagem específica para cliente Vesti buscando suporte ===
+  clienteSuporteMessage:
+    'Clique abaixo para falar com nosso time de suporte:\n\n📲 wa.me/551132304077\n\nAtendemos de Seg. a Sex. (8h30 às 17h30) e Sáb. (9h às 13h).'
 };
 
 // ============================================================
@@ -211,8 +219,11 @@ function escapeHtml(s) {
 function formatBubbleText(text) {
   const escaped = escapeHtml(text);
   const linkified = escaped.replace(
-    /(https?:\/\/[^\s<]+)/g,
-    '<a href="$1" target="_blank" rel="noopener">$1</a>'
+    /(https?:\/\/[^\s<]+|wa\.me\/[^\s<]+)/g,
+    (match) => {
+      const href = match.startsWith('http') ? match : `https://${match}`;
+      return `<a href="${href}" target="_blank" rel="noopener">${match}</a>`;
+    }
   );
   return linkified.replace(/\n/g, '<br>');
 }
@@ -390,10 +401,16 @@ async function nextStep() {
 async function finish() {
   $('#composer').remove();
 
-  const isMultimarca = state.data.perfil === 'multimarca';
+  const isMultimarca      = state.data.perfil === 'multimarca';
+  const isClienteCS       = state.data.perfil === 'cliente_vesti' && state.data.cliente_busca === 'btn_cs';
+  const isClienteSuporte  = state.data.perfil === 'cliente_vesti' && state.data.cliente_busca === 'btn_suporte';
 
   if (isMultimarca) {
     await botSay(CONFIG.multimarcaMessage, CONFIG.timing.finalTitle);
+  } else if (isClienteCS) {
+    await botSay(CONFIG.clienteCSMessage(state.data), CONFIG.timing.finalTitle);
+  } else if (isClienteSuporte) {
+    await botSay(CONFIG.clienteSuporteMessage, CONFIG.timing.finalTitle);
   } else {
     await botSay(CONFIG.finalMessage.title, CONFIG.timing.finalTitle);
   }
@@ -417,7 +434,7 @@ async function finish() {
     console.error('[Vesti Form] Erro ao enviar para o webhook:', err);
   }
 
-  if (isMultimarca) return;
+  if (isMultimarca || isClienteCS || isClienteSuporte) return;
 
   // Renderiza o cartão de "obrigado"
   const main = $('.vf-app');
