@@ -52,8 +52,7 @@ const CONFIG = {
       type: 'text',
       validate: (v) => {
         const t = v.trim();
-        if (t.length < 3) return 'Digite seu nome completo.';
-        if (!t.includes(' ')) return 'Inclua o sobrenome também.';
+        if (t.length < 2) return 'Digite seu nome.';
         return null;
       },
       format: (v) => v.trim().replace(/\s+/g, ' ')
@@ -72,19 +71,6 @@ const CONFIG = {
         return null;
       },
       format: (v) => v.replace(/\D/g, '')
-    },
-    {
-      key: 'email',
-      botMessage: 'Qual seu melhor e-mail?',
-      label: 'E-MAIL',
-      placeholder: 'voce@email.com',
-      type: 'email',
-      validate: (v) => {
-        const t = v.trim();
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(t)) return 'E-mail inválido.';
-        return null;
-      },
-      format: (v) => v.trim().toLowerCase()
     },
     {
       key: 'perfil',
