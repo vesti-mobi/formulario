@@ -131,7 +131,7 @@ const CONFIG = {
   // === Tela final =========================================
   finalMessage: {
     title: 'Recebemos seu contato!',
-    body:  'Um especialista da Vesti vai falar com você em instantes pelo WhatsApp.'
+    body:  'Um especialista da Vesti vai falar com você pelo WhatsApp.'
   }
 };
 
@@ -140,7 +140,8 @@ const CONFIG = {
 // ============================================================
 const state = {
   stepIndex: 0,
-  data: {}
+  data: {},
+  busy: false
 };
 
 // ============================================================
@@ -320,6 +321,7 @@ function renderInputForCurrentStep() {
 }
 
 function onChoiceSelect(opt) {
+  if (state.busy) return;
   const step = CONFIG.steps[state.stepIndex];
   state.data[step.key] = opt.value;
   appendBubble('user', opt.label);
@@ -330,6 +332,7 @@ function onChoiceSelect(opt) {
 // Avanço de etapas (com salto condicional)
 // ============================================================
 async function nextStep() {
+  state.busy = true;
   state.stepIndex += 1;
 
   // Pula etapas cuja condição não for atendida
@@ -346,6 +349,7 @@ async function nextStep() {
 
   if (state.stepIndex >= CONFIG.steps.length) {
     await finish();
+    state.busy = false;
     return;
   }
 
@@ -355,6 +359,7 @@ async function nextStep() {
     : step.botMessage;
   await botSay(msg, CONFIG.timing.question);
   renderInputForCurrentStep();
+  state.busy = false;
 }
 
 // ============================================================
@@ -404,7 +409,9 @@ async function finish() {
 // ============================================================
 function onSubmit(e) {
   e.preventDefault();
+  if (state.busy) return;
   const step = CONFIG.steps[state.stepIndex];
+  if (!step || step.type === 'choice') return;
   const raw  = $('#input').value;
 
   const err = step.validate ? step.validate(raw) : null;
@@ -418,6 +425,7 @@ function onSubmit(e) {
 
   const displayValue = step.mask === 'phoneBR' ? applyPhoneMaskBR(value) : raw.trim();
   appendBubble('user', displayValue);
+  $('#input').value = '';
 
   nextStep();
 }
