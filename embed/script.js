@@ -191,6 +191,7 @@
           btn.addEventListener('click', function () { onChoiceSelect(opt); });
           choices.appendChild(btn);
         });
+        requestAnimationFrame(scrollChatToBottom);
         return;
       }
 
