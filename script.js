@@ -26,9 +26,7 @@ const CONFIG = {
   },
 
   // === Mensagens iniciais (antes da 1ª pergunta) ==========
-  intro: [
-    'A Vesti impulsiona as vendas Online da sua confecção, são quase mil confecções utilizando o ecossistema Vesti.'
-  ],
+  intro: [],
 
   // === Etapas / perguntas =================================
   // Cada etapa aceita:
@@ -84,6 +82,17 @@ const CONFIG = {
       ]
     },
     {
+      key: 'cliente_busca',
+      botMessage: 'O que está buscando?',
+      label: 'BUSCA',
+      type: 'choice',
+      condition: (data) => data.perfil === 'cliente_vesti',
+      options: [
+        { value: 'btn_suporte', label: 'Suporte' },
+        { value: 'btn_cs',      label: 'Conhecer outro produto' }
+      ]
+    },
+    {
       key: 'marca',
       botMessage: 'Show! E qual o nome da sua marca?',
       label: 'NOME DA MARCA',
@@ -132,7 +141,11 @@ const CONFIG = {
   finalMessage: {
     title: 'Recebemos seu contato!',
     body:  'Um especialista da Vesti vai falar com você pelo WhatsApp.'
-  }
+  },
+
+  // === Mensagem específica para perfil multimarca =========
+  multimarcaMessage:
+    'A Vesti é focada no atacado de moda, conectando fabricantes e revendedores diretamente, por isso não atendemos o modelo multimarca.\n\nMas se quiser conhecer os fornecedores que usam a Vesti, vale baixar o Vestishop, nosso app com o catálogo completo das confecções parceiras: https://vestishop.vesti.mobi/app'
 };
 
 // ============================================================
@@ -195,16 +208,25 @@ function escapeHtml(s) {
 // ============================================================
 // UI: balões e indicador "digitando..."
 // ============================================================
+function formatBubbleText(text) {
+  const escaped = escapeHtml(text);
+  const linkified = escaped.replace(
+    /(https?:\/\/[^\s<]+)/g,
+    '<a href="$1" target="_blank" rel="noopener">$1</a>'
+  );
+  return linkified.replace(/\n/g, '<br>');
+}
+
 function appendBubble(side, text) {
   const row = document.createElement('div');
   row.className = `row ${side}`;
   if (side === 'bot') {
     row.innerHTML = `
       <div class="avatar" aria-hidden="true"><img src="${CONFIG.avatarUrl}" alt=""/></div>
-      <div class="bubble">${escapeHtml(text)}</div>
+      <div class="bubble">${formatBubbleText(text)}</div>
     `;
   } else {
-    row.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>`;
+    row.innerHTML = `<div class="bubble">${formatBubbleText(text)}</div>`;
   }
   $('#chat').appendChild(row);
   scrollChatToBottom();
@@ -367,7 +389,14 @@ async function nextStep() {
 // ============================================================
 async function finish() {
   $('#composer').remove();
-  await botSay(CONFIG.finalMessage.title, CONFIG.timing.finalTitle);
+
+  const isMultimarca = state.data.perfil === 'multimarca';
+
+  if (isMultimarca) {
+    await botSay(CONFIG.multimarcaMessage, CONFIG.timing.finalTitle);
+  } else {
+    await botSay(CONFIG.finalMessage.title, CONFIG.timing.finalTitle);
+  }
 
   const payload = {
     ...state.data,
@@ -387,6 +416,8 @@ async function finish() {
   } catch (err) {
     console.error('[Vesti Form] Erro ao enviar para o webhook:', err);
   }
+
+  if (isMultimarca) return;
 
   // Renderiza o cartão de "obrigado"
   const main = $('.vf-app');
