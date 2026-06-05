@@ -74,7 +74,7 @@ const CONFIG = {
     },
     {
       key: 'perfil',
-      botMessage: 'Para que eu possa direcionar seu atendimento da melhor forma, em qual perfil você se encaixa: fabricante, multimarca ou já é cliente da Vesti?',
+      botMessage: (data) => `Olá ${firstName(data.nome)}! Para direcionar seu atendimento da melhor forma, me conta, você é:`,
       label: 'PERFIL',
       type: 'choice',
       options: [
