@@ -15,7 +15,7 @@ const CONFIG = {
   },
 
   // === Foto da "atendente" ================================
-  avatarUrl: 'https://randomuser.me/api/portraits/women/79.jpg',
+  avatarUrl: 'avatar.jpg',
 
   // === Tempos de animação (ms) ============================
   timing: {
