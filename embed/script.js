@@ -78,17 +78,7 @@
     function $(sel) { return root.querySelector('[data-vf="' + sel + '"]'); }
     function getActiveWebhookUrl() { return CONFIG.webhook[CONFIG.webhook.active] || CONFIG.webhook.production; }
     function firstName(full) { return (full || '').trim().split(/\s+/)[0] || ''; }
-    function scrollChatToBottom(instant) {
-      var c = $('chat');
-      if (instant) {
-        var prev = c.style.scrollBehavior;
-        c.style.scrollBehavior = 'auto';
-        c.scrollTop = c.scrollHeight;
-        c.style.scrollBehavior = prev;
-      } else {
-        c.scrollTop = c.scrollHeight;
-      }
-    }
+    function scrollChatToBottom() { var c = $('chat'); c.scrollTop = c.scrollHeight; }
 
     function getUtmsAndClickIds() {
       var params = new URLSearchParams(window.location.search);
@@ -180,33 +170,26 @@
 
     function renderInputForCurrentStep() {
       var step      = CONFIG.steps[state.stepIndex];
+      var composer  = $('composer');
       var input     = $('input');
       var label     = $('fieldLabel');
       var prefix    = $('prefix');
       var inputWrap = $('inputWrap');
-      var choices   = $('choices');
 
-      label.textContent = step.label;
       $('error').textContent = '';
 
+      // Escolha múltipla: os botões vão para DENTRO do chat (parte da conversa),
+      // e a barra de entrada some. Assim, no mobile, a pergunta nunca fica
+      // coberta — tudo está no mesmo container que rola.
       if (step.type === 'choice') {
-        inputWrap.hidden = true;
-        choices.hidden = false;
-        choices.innerHTML = '';
-        step.options.forEach(function (opt) {
-          var btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'choice-btn';
-          btn.textContent = opt.label;
-          btn.addEventListener('click', function () { onChoiceSelect(opt); });
-          choices.appendChild(btn);
-        });
-        requestAnimationFrame(function () { requestAnimationFrame(function () { scrollChatToBottom(true); }); });
+        composer.hidden = true;
+        appendChoices(step);
         return;
       }
 
+      composer.hidden = false;
       inputWrap.hidden = false;
-      choices.hidden = true;
+      label.textContent = step.label;
       input.value = '';
       input.type = step.type || 'text';
       input.placeholder = step.placeholder || '';
@@ -218,11 +201,30 @@
       setTimeout(function () { input.focus(); }, CONFIG.timing.focus);
     }
 
-    function onChoiceSelect(opt) {
+    // Adiciona os botões de escolha como um bloco dentro do chat.
+    function appendChoices(step) {
+      var group = document.createElement('div');
+      group.className = 'choices in-chat';
+      group.setAttribute('role', 'group');
+      group.setAttribute('aria-label', 'Opções de resposta');
+      step.options.forEach(function (opt) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'choice-btn';
+        btn.textContent = opt.label;
+        btn.addEventListener('click', function () { onChoiceSelect(opt, group); });
+        group.appendChild(btn);
+      });
+      $('chat').appendChild(group);
+      scrollChatToBottom();
+    }
+
+    function onChoiceSelect(opt, group) {
       if (state.busy) return;
       var step = CONFIG.steps[state.stepIndex];
       state.data[step.key] = opt.value;
-      appendBubble('user', opt.label);
+      if (group) group.remove();        // remove os botões do chat
+      appendBubble('user', opt.label);  // a escolha vira a resposta do usuário
       nextStep();
     }
 

@@ -300,6 +300,8 @@ body { overflow: hidden; }
   gap: 10px;
   padding: 4px 0;
 }
+/* Botões de escolha exibidos dentro do chat entram suaves como os balões. */
+.vf-app .chat > .choices.in-chat { animation: vf-pop 0.32s ease-out; }
 .vf-app .choice-btn {
   width: 100%;
   padding: 14px 18px;

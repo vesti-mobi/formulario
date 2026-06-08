@@ -180,18 +180,9 @@ function $(sel) {
   return document.querySelector(sel);
 }
 
-function scrollChatToBottom(instant) {
+function scrollChatToBottom() {
   const chat = $('#chat');
-  if (instant) {
-    // Rolagem imediata (sem animação), para não competir com o
-    // scroll-behavior: smooth quando o layout muda no mesmo instante.
-    const prev = chat.style.scrollBehavior;
-    chat.style.scrollBehavior = 'auto';
-    chat.scrollTop = chat.scrollHeight;
-    chat.style.scrollBehavior = prev;
-  } else {
-    chat.scrollTop = chat.scrollHeight;
-  }
+  chat.scrollTop = chat.scrollHeight;
 }
 
 // Lê UTMs e click IDs (gclid/fbclid) da URL atual.
@@ -316,38 +307,27 @@ function updateProgress() {
 // ============================================================
 function renderInputForCurrentStep() {
   const step      = CONFIG.steps[state.stepIndex];
+  const composer  = $('#composer');
   const input     = $('#input');
   const label     = $('#fieldLabel');
   const prefix    = $('#prefix');
   const inputWrap = $('#inputWrap');
-  const choices   = $('#choices');
 
-  label.textContent = step.label;
   $('#error').textContent = '';
 
-  // Escolha múltipla: esconde input, mostra botões
+  // Escolha múltipla: os botões vão para DENTRO do chat (parte da conversa),
+  // e a barra de entrada some. Assim, no mobile, a pergunta nunca fica
+  // coberta — tudo está no mesmo container que rola.
   if (step.type === 'choice') {
-    inputWrap.hidden = true;
-    choices.hidden = false;
-    choices.innerHTML = '';
-    step.options.forEach(opt => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'choice-btn';
-      btn.textContent = opt.label;
-      btn.addEventListener('click', () => onChoiceSelect(opt));
-      choices.appendChild(btn);
-    });
-    // Os botões aumentam a altura do composer e encolhem a área do chat.
-    // Dupla rAF: garante que o layout já foi recalculado antes de rolar.
-    // Rolagem instantânea para a pergunta nunca ficar coberta pelos botões.
-    requestAnimationFrame(() => requestAnimationFrame(() => scrollChatToBottom(true)));
+    composer.hidden = true;
+    appendChoices(step);
     return;
   }
 
-  // Texto/email/telefone
+  // Texto/email/telefone: mostra a barra de entrada embaixo
+  composer.hidden = false;
   inputWrap.hidden = false;
-  choices.hidden = true;
+  label.textContent = step.label;
   input.value = '';
   input.type = step.type || 'text';
   input.placeholder = step.placeholder || '';
@@ -366,11 +346,30 @@ function renderInputForCurrentStep() {
   setTimeout(() => input.focus(), CONFIG.timing.focus);
 }
 
-function onChoiceSelect(opt) {
+// Adiciona os botões de escolha como um bloco dentro do chat.
+function appendChoices(step) {
+  const group = document.createElement('div');
+  group.className = 'choices in-chat';
+  group.setAttribute('role', 'group');
+  group.setAttribute('aria-label', 'Opções de resposta');
+  step.options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'choice-btn';
+    btn.textContent = opt.label;
+    btn.addEventListener('click', () => onChoiceSelect(opt, group));
+    group.appendChild(btn);
+  });
+  $('#chat').appendChild(group);
+  scrollChatToBottom();
+}
+
+function onChoiceSelect(opt, group) {
   if (state.busy) return;
   const step = CONFIG.steps[state.stepIndex];
   state.data[step.key] = opt.value;
-  appendBubble('user', opt.label);
+  if (group) group.remove();        // remove os botões do chat
+  appendBubble('user', opt.label);  // a escolha vira a resposta do usuário
   nextStep();
 }
 
