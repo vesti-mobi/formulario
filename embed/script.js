@@ -259,7 +259,8 @@
       if (isMultimarca)          await botSay(CONFIG.multimarcaMessage,            CONFIG.timing.finalTitle);
       else if (isClienteCS)      await botSay(CONFIG.clienteCSMessage(state.data), CONFIG.timing.finalTitle);
       else if (isClienteSuporte) await botSay(CONFIG.clienteSuporteMessage,        CONFIG.timing.finalTitle);
-      else                       await botSay(CONFIG.finalMessage.title,           CONFIG.timing.finalTitle);
+      // Fabricante: não enviamos balão do bot — só o cartão final abaixo,
+      // para o título não aparecer duplicado.
 
       var payload = Object.assign({}, state.data, getUtmsAndClickIds(), {
         submitted_at: new Date().toISOString(),
@@ -278,6 +279,11 @@
       }
 
       if (isMultimarca || isClienteCS || isClienteSuporte) return;
+
+      // Pausa com indicador de digitação antes de exibir o cartão final.
+      showTyping();
+      await new Promise(function (r) { setTimeout(r, CONFIG.timing.finalTitle); });
+      hideTyping();
 
       var done = document.createElement('div');
       done.className = 'done-state';

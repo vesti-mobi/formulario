@@ -424,9 +424,9 @@ async function finish() {
     await botSay(CONFIG.clienteCSMessage(state.data), CONFIG.timing.finalTitle);
   } else if (isClienteSuporte) {
     await botSay(CONFIG.clienteSuporteMessage, CONFIG.timing.finalTitle);
-  } else {
-    await botSay(CONFIG.finalMessage.title, CONFIG.timing.finalTitle);
   }
+  // Fabricante: não enviamos balão do bot aqui — só o cartão final abaixo,
+  // para o título não aparecer duplicado.
 
   const payload = {
     ...state.data,
@@ -448,6 +448,11 @@ async function finish() {
   }
 
   if (isMultimarca || isClienteCS || isClienteSuporte) return;
+
+  // Pausa com indicador de digitação antes de exibir o cartão final.
+  showTyping();
+  await new Promise(r => setTimeout(r, CONFIG.timing.finalTitle));
+  hideTyping();
 
   // Renderiza o cartão de "obrigado"
   const main = $('.vf-app');
