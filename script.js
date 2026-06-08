@@ -408,6 +408,32 @@ async function nextStep() {
 }
 
 // ============================================================
+// Envio ao webhook (reutilizável)
+// `extra` permite acrescentar campos ao payload (ex.: { status: 'parcial' }).
+// ============================================================
+async function sendToWebhook(extra) {
+  const payload = {
+    ...state.data,
+    ...getUtmsAndClickIds(),
+    ...extra,
+    submitted_at: new Date().toISOString(),
+    page_url:     window.location.href,
+    user_agent:   navigator.userAgent,
+    referrer:     document.referrer || null
+  };
+
+  try {
+    await fetch(getActiveWebhookUrl(), {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload)
+    });
+  } catch (err) {
+    console.error('[Vesti Form] Erro ao enviar para o webhook:', err);
+  }
+}
+
+// ============================================================
 // Submissão final ao webhook
 // ============================================================
 async function finish() {
@@ -427,24 +453,8 @@ async function finish() {
   // Fabricante: não enviamos balão do bot aqui — só o cartão final abaixo,
   // para o título não aparecer duplicado.
 
-  const payload = {
-    ...state.data,
-    ...getUtmsAndClickIds(),
-    submitted_at: new Date().toISOString(),
-    page_url:     window.location.href,
-    user_agent:   navigator.userAgent,
-    referrer:     document.referrer || null
-  };
-
-  try {
-    await fetch(getActiveWebhookUrl(), {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload)
-    });
-  } catch (err) {
-    console.error('[Vesti Form] Erro ao enviar para o webhook:', err);
-  }
+  // Disparo final (qualificação concluída).
+  await sendToWebhook({ status: 'completo' });
 
   if (isMultimarca || isClienteCS || isClienteSuporte) return;
 
@@ -491,6 +501,13 @@ function onSubmit(e) {
   const displayValue = step.mask === 'phoneBR' ? applyPhoneMaskBR(value) : raw.trim();
   appendBubble('user', displayValue);
   $('#input').value = '';
+
+  // Disparo parcial: assim que o FABRICANTE informa a marca, já enviamos
+  // o lead qualificado por perfil (ainda sem faixa de faturamento).
+  // Fire-and-forget para não travar o fluxo da conversa.
+  if (step.key === 'marca' && state.data.perfil === 'fabricante') {
+    sendToWebhook({ status: 'parcial' });
+  }
 
   nextStep();
 }

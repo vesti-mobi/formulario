@@ -251,20 +251,10 @@
       state.busy = false;
     }
 
-    async function finish() {
-      $('composer').remove();
-
-      var isMultimarca     = state.data.perfil === 'multimarca';
-      var isClienteCS      = state.data.perfil === 'cliente_vesti' && state.data.cliente_busca === 'btn_cs';
-      var isClienteSuporte = state.data.perfil === 'cliente_vesti' && state.data.cliente_busca === 'btn_suporte';
-
-      if (isMultimarca)          await botSay(CONFIG.multimarcaMessage,            CONFIG.timing.finalTitle);
-      else if (isClienteCS)      await botSay(CONFIG.clienteCSMessage(state.data), CONFIG.timing.finalTitle);
-      else if (isClienteSuporte) await botSay(CONFIG.clienteSuporteMessage,        CONFIG.timing.finalTitle);
-      // Fabricante: não enviamos balão do bot — só o cartão final abaixo,
-      // para o título não aparecer duplicado.
-
-      var payload = Object.assign({}, state.data, getUtmsAndClickIds(), {
+    // Envio ao webhook (reutilizável). `extra` acrescenta campos ao payload
+    // (ex.: { status: 'parcial' } / { status: 'completo' }).
+    async function sendToWebhook(extra) {
+      var payload = Object.assign({}, state.data, getUtmsAndClickIds(), extra || {}, {
         submitted_at: new Date().toISOString(),
         page_url:     window.location.href,
         user_agent:   navigator.userAgent,
@@ -279,6 +269,23 @@
       } catch (err) {
         console.error('[Vesti Form] Erro ao enviar para o webhook:', err);
       }
+    }
+
+    async function finish() {
+      $('composer').remove();
+
+      var isMultimarca     = state.data.perfil === 'multimarca';
+      var isClienteCS      = state.data.perfil === 'cliente_vesti' && state.data.cliente_busca === 'btn_cs';
+      var isClienteSuporte = state.data.perfil === 'cliente_vesti' && state.data.cliente_busca === 'btn_suporte';
+
+      if (isMultimarca)          await botSay(CONFIG.multimarcaMessage,            CONFIG.timing.finalTitle);
+      else if (isClienteCS)      await botSay(CONFIG.clienteCSMessage(state.data), CONFIG.timing.finalTitle);
+      else if (isClienteSuporte) await botSay(CONFIG.clienteSuporteMessage,        CONFIG.timing.finalTitle);
+      // Fabricante: não enviamos balão do bot — só o cartão final abaixo,
+      // para o título não aparecer duplicado.
+
+      // Disparo final (qualificação concluída).
+      await sendToWebhook({ status: 'completo' });
 
       if (isMultimarca || isClienteCS || isClienteSuporte) return;
 
@@ -311,6 +318,11 @@
       var displayValue = step.mask === 'phoneBR' ? applyPhoneMaskBR(value) : raw.trim();
       appendBubble('user', displayValue);
       $('input').value = '';
+      // Disparo parcial: assim que o FABRICANTE informa a marca, enviamos o
+      // lead qualificado por perfil (sem faixa). Fire-and-forget.
+      if (step.key === 'marca' && state.data.perfil === 'fabricante') {
+        sendToWebhook({ status: 'parcial' });
+      }
       nextStep();
     }
     function onInput(e) {
