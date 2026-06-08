@@ -329,6 +329,9 @@ function renderInputForCurrentStep() {
       btn.addEventListener('click', () => onChoiceSelect(opt));
       choices.appendChild(btn);
     });
+    // Os botões aumentam a altura do composer e encolhem a área do chat.
+    // Rola novamente após o layout para a pergunta não ficar coberta.
+    requestAnimationFrame(scrollChatToBottom);
     return;
   }
 
