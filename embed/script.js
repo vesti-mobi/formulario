@@ -18,7 +18,7 @@
       timing: { intro: 600, question: 750, finalTitle: 600, focus: 100 },
       intro: [],
       steps: [
-        { key: 'nome', botMessage: 'Pra começar, qual seu nome completo?', label: 'NOME COMPLETO',
+        { key: 'nome', botMessage: 'Olá! Para começar, me conta seu nome completo?', label: 'NOME COMPLETO',
           placeholder: 'Digite seu nome e sobrenome...', type: 'text',
           validate: function (v) { return v.trim().length < 2 ? 'Digite seu nome.' : null; },
           format:   function (v) { return v.trim().replace(/\s+/g, ' '); } },
@@ -29,7 +29,7 @@
           validate: function (v) { var d = v.replace(/\D/g, ''); return (d.length < 10 || d.length > 11) ? 'Telefone inválido. Use DDD + número.' : null; },
           format:   function (v) { return v.replace(/\D/g, ''); } },
         { key: 'perfil',
-          botMessage: function (d) { return 'Olá ' + firstName(d.nome) + '! Para direcionar seu atendimento da melhor forma, me conta, você é:'; },
+          botMessage: function (d) { return firstName(d.nome) + ', para direcionar seu atendimento da melhor forma, me conta, você é:'; },
           label: 'PERFIL', type: 'choice',
           options: [
             { value: 'fabricante',    label: 'Fabricante' },
@@ -37,7 +37,7 @@
             { value: 'cliente_vesti', label: 'Já sou cliente da Vesti' }
           ]
         },
-        { key: 'marca', botMessage: 'Show! E qual o nome da sua marca?', label: 'NOME DA MARCA',
+        { key: 'marca', botMessage: 'Qual o nome da sua marca?', label: 'NOME DA MARCA',
           placeholder: 'Digite o nome da sua marca...', type: 'text',
           condition: function (d) { return d.perfil === 'fabricante' || d.perfil === 'cliente_vesti'; },
           validate:  function (v) { return v.trim().length < 2 ? 'Informe o nome da marca.' : null; },
@@ -67,7 +67,7 @@
           ]
         }
       ],
-      finalMessage: { title: 'Recebemos seu contato!', body: 'Um especialista da Vesti vai falar com você pelo WhatsApp.' },
+      finalMessage: { title: 'Obrigada pelas informações!', body: 'Vamos te chamar no WhatsApp em breve.' },
       multimarcaMessage: 'A Vesti é focada no atacado de moda, conectando fabricantes e revendedores diretamente, por isso não atendemos o modelo multimarca.\n\nMas se quiser conhecer os fornecedores que usam a Vesti, vale baixar o Vestishop, nosso app com o catálogo completo das confecções parceiras: https://vestishop.vesti.mobi/app',
       clienteCSMessage: function (d) { return 'Obrigada, ' + firstName(d.nome) + '! A consultora responsável pela sua marca entrará em contato em breve.'; },
       clienteSuporteMessage: 'Clique abaixo para falar com nosso time de suporte:\n\n📲 wa.me/551132304077\n\nAtendemos de Seg. a Sex. (8h30 às 17h30) e Sáb. (9h às 13h).'
@@ -78,7 +78,17 @@
     function $(sel) { return root.querySelector('[data-vf="' + sel + '"]'); }
     function getActiveWebhookUrl() { return CONFIG.webhook[CONFIG.webhook.active] || CONFIG.webhook.production; }
     function firstName(full) { return (full || '').trim().split(/\s+/)[0] || ''; }
-    function scrollChatToBottom() { var c = $('chat'); c.scrollTop = c.scrollHeight; }
+    function scrollChatToBottom(instant) {
+      var c = $('chat');
+      if (instant) {
+        var prev = c.style.scrollBehavior;
+        c.style.scrollBehavior = 'auto';
+        c.scrollTop = c.scrollHeight;
+        c.style.scrollBehavior = prev;
+      } else {
+        c.scrollTop = c.scrollHeight;
+      }
+    }
 
     function getUtmsAndClickIds() {
       var params = new URLSearchParams(window.location.search);
@@ -191,7 +201,7 @@
           btn.addEventListener('click', function () { onChoiceSelect(opt); });
           choices.appendChild(btn);
         });
-        requestAnimationFrame(scrollChatToBottom);
+        requestAnimationFrame(function () { requestAnimationFrame(function () { scrollChatToBottom(true); }); });
         return;
       }
 

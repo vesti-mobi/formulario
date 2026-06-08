@@ -44,7 +44,7 @@ const CONFIG = {
   steps: [
     {
       key: 'nome',
-      botMessage: 'Pra começar, qual seu nome completo?',
+      botMessage: 'Olá! Para começar, me conta seu nome completo?',
       label: 'NOME COMPLETO',
       placeholder: 'Digite seu nome e sobrenome...',
       type: 'text',
@@ -72,7 +72,7 @@ const CONFIG = {
     },
     {
       key: 'perfil',
-      botMessage: (data) => `Olá ${firstName(data.nome)}! Para direcionar seu atendimento da melhor forma, me conta, você é:`,
+      botMessage: (data) => `${firstName(data.nome)}, para direcionar seu atendimento da melhor forma, me conta, você é:`,
       label: 'PERFIL',
       type: 'choice',
       options: [
@@ -83,7 +83,7 @@ const CONFIG = {
     },
     {
       key: 'marca',
-      botMessage: 'Show! E qual o nome da sua marca?',
+      botMessage: 'Qual o nome da sua marca?',
       label: 'NOME DA MARCA',
       placeholder: 'Digite o nome da sua marca...',
       type: 'text',
@@ -139,8 +139,8 @@ const CONFIG = {
 
   // === Tela final =========================================
   finalMessage: {
-    title: 'Recebemos seu contato!',
-    body:  'Um especialista da Vesti vai falar com você pelo WhatsApp.'
+    title: 'Obrigada pelas informações!',
+    body:  'Vamos te chamar no WhatsApp em breve.'
   },
 
   // === Mensagem específica para perfil multimarca =========
@@ -180,9 +180,18 @@ function $(sel) {
   return document.querySelector(sel);
 }
 
-function scrollChatToBottom() {
+function scrollChatToBottom(instant) {
   const chat = $('#chat');
-  chat.scrollTop = chat.scrollHeight;
+  if (instant) {
+    // Rolagem imediata (sem animação), para não competir com o
+    // scroll-behavior: smooth quando o layout muda no mesmo instante.
+    const prev = chat.style.scrollBehavior;
+    chat.style.scrollBehavior = 'auto';
+    chat.scrollTop = chat.scrollHeight;
+    chat.style.scrollBehavior = prev;
+  } else {
+    chat.scrollTop = chat.scrollHeight;
+  }
 }
 
 // Lê UTMs e click IDs (gclid/fbclid) da URL atual.
@@ -330,8 +339,9 @@ function renderInputForCurrentStep() {
       choices.appendChild(btn);
     });
     // Os botões aumentam a altura do composer e encolhem a área do chat.
-    // Rola novamente após o layout para a pergunta não ficar coberta.
-    requestAnimationFrame(scrollChatToBottom);
+    // Dupla rAF: garante que o layout já foi recalculado antes de rolar.
+    // Rolagem instantânea para a pergunta nunca ficar coberta pelos botões.
+    requestAnimationFrame(() => requestAnimationFrame(() => scrollChatToBottom(true)));
     return;
   }
 
