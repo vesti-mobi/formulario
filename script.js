@@ -502,6 +502,13 @@ function onSubmit(e) {
   appendBubble('user', displayValue);
   $('#input').value = '';
 
+  // Disparo de contato: assim que o lead informa o WhatsApp (2ª pergunta),
+  // enviamos nome + telefone para capturar o lead imediatamente, mesmo que
+  // ele abandone o formulário antes de concluir. Fire-and-forget.
+  if (step.key === 'whatsapp') {
+    sendToWebhook({ status: 'contato' });
+  }
+
   // Disparo parcial: assim que o FABRICANTE informa a marca, já enviamos
   // o lead qualificado por perfil (ainda sem faixa de faturamento).
   // Fire-and-forget para não travar o fluxo da conversa.

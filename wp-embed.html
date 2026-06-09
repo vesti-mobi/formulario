@@ -567,6 +567,12 @@
     var displayValue = step.mask === 'phoneBR' ? applyPhoneMaskBR(value) : raw.trim();
     appendBubble('user', displayValue);
     $('input').value = '';
+    // Disparo de contato: assim que o lead informa o WhatsApp (2ª pergunta),
+    // enviamos nome + telefone para capturar o lead imediatamente, mesmo que
+    // ele abandone o formulário antes de concluir. Fire-and-forget.
+    if (step.key === 'whatsapp') {
+      sendToWebhook({ status: 'contato' });
+    }
     // Disparo parcial: assim que o FABRICANTE informa a marca, enviamos o
     // lead qualificado por perfil (sem faixa). Fire-and-forget.
     if (step.key === 'marca' && state.data.perfil === 'fabricante') {
