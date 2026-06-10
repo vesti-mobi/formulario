@@ -117,7 +117,7 @@ const CONFIG = {
       key: 'erp_nome',
       botMessage: 'Qual ERP você utiliza?',
       label: 'NOME DO ERP',
-      placeholder: 'Ex: Bling, Tiny, Linx...',
+      placeholder: 'Ex: Bling, Tiny, E-millennium...',
       type: 'text',
       condition: (data) => data.usa_erp === 'sim',
       validate: (v) => v.trim().length < 2 ? 'Informe o nome do ERP.' : null,

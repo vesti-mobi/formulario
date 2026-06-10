@@ -303,7 +303,7 @@
         options: [ { value: 'sim', label: 'Sim' }, { value: 'nao', label: 'Não' } ]
       },
       { key: 'erp_nome', botMessage: 'Qual ERP você utiliza?', label: 'NOME DO ERP',
-        placeholder: 'Ex: Bling, Tiny, Linx...', type: 'text',
+        placeholder: 'Ex: Bling, Tiny, E-millennium...', type: 'text',
         condition: function (d) { return d.usa_erp === 'sim'; },
         validate:  function (v) { return v.trim().length < 2 ? 'Informe o nome do ERP.' : null; },
         format:    function (v) { return v.trim(); } },
